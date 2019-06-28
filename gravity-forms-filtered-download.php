@@ -3,6 +3,7 @@
 Plugin Name: Gravity Forms Filtered Entries Download
 Plugin URI:  http://donninger.nl
 Description: Download Gravity Forms entries based on a predefined filter
+             To perform a backup, add cronjob for: https://drugsincidenten.nl?gfbackup=true
 Version:     1.1
 Author:      Donninger Consultancy
 Author URI:  http://donninger.nl
@@ -32,10 +33,8 @@ if (class_exists("GFForms")) {
     //CSV options
     private $delimiter;
     private $newline;
-
     private $filterKey;
     private $formId;
-
     private $total_count;
 
     public function init() {
@@ -66,8 +65,8 @@ if (class_exists("GFForms")) {
     }
 
     public function plugin_page() {
-  	  // $url = $this->uploadUrl . "download_" . md5(date('d-m-Y')) . ".csv";
-  	  // echo "<a href=\"$url\">Download</a><br/>\n";
+  	  $url = $this->uploadUrl . "download_" . md5(date('d-m-Y')) . ".csv";
+  	  echo "<a href=\"$url\">Download today's backup</a><br/>\n";
       // include("settingsPage.inc.php");
       echo $this->handleShortCode(0);
     }
@@ -103,18 +102,16 @@ if (class_exists("GFForms")) {
   	}
 
   	private function backup($offset, $records) {
-  	  //echo "backing up...\n";
+  	  // $this->log("backing up...\n");
   	  $entries = $this->getEntries($offset, $records, []);
-  	  //echo "nr of entries: " . sizeof($entries) . "\n";
+  	  // $this->log("nr of entries: " . sizeof($entries));
   	  //if we are continuing the appending of a file, skip the header rows
   	  $showHeaders = $offset > 0 ? false : true;
   	  $array = $this->entries2Array($entries, $showHeaders);
-  	  //echo "array size: " . sizeof($array) . "\n";
+  	  // $this->log("array size: " . sizeof($array));
   	  $csv = $this->array2Csv($array);
-  	  //echo "csv contents: \n$csv\n";
   	  $filename = $this->uploadDir . "download_" . md5(date('d-m-Y')) . ".csv";
-  	  //echo "filename: $filename \n";
-  	  $this->log("appending " . sizeof($array) . " records to file $filename starting from record $offset");
+  	  // $this->log("appending " . sizeof($array) . " records to file $filename starting from record $offset");
   	  $this->appendToFile($csv, $filename);
   	}
 
@@ -124,8 +121,9 @@ if (class_exists("GFForms")) {
   	  //echo "yesterday: " . $date->format('d-m-Y') . "\n";
   	  //echo "yesterday hash: " . md5($date->format('d-m-Y')) . "\n";
   	  $filename = $this->uploadDir . "download_" . md5($date->format('d-m-Y')) . ".csv";
-  	  $this->log("removing file $filename");
+  	  // $this->log("removing file $filename");
   	  unlink($filename);
+      // $this->log("file removed!");
   	}
 
     private function getTotalCount() {
@@ -142,13 +140,17 @@ if (class_exists("GFForms")) {
 
   	  if(count($instellingen)>0) {
   	    // $search_criteria['field_filters'][] = array('key' => $this->filterKey, 'operator' => 'in', 'value' => explode(",", str_replace("'","",$instellingen)) );
-  	  }
+  	  } else {
+        $search_criteria = array();
+      }
 
       $sorting = array( 'key' => "4", 'direction' => "ASC" );
       $paging = array('offset' => $offset, 'page_size' => $limit );
       $total_count = 0;
       //collect entries based on filter
+      // $this->log("Getting GF entries... $this->formId, $search_criteria, $sorting, $paging, $total_count ");
       $entries = GFAPI::get_entries( $this->formId, $search_criteria, $sorting, $paging, $total_count );
+      // $this->log("Found $total_count entries");
       $this->total_count = $total_count;
       return $entries;
     }
